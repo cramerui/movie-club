@@ -67,6 +67,10 @@ export default function App() {
   const [sortOrder, setSortOrder] = useState('desc');
   const [expandedMovieId, setExpandedMovieId] = useState(null);
 
+  // Modali
+  const [deleteModalMovie, setDeleteModalMovie] = useState(null);
+  const [randomModalMovie, setRandomModalMovie] = useState(null);
+
   useEffect(() => {
     fetchSupabaseMovies();
   }, []);
@@ -208,14 +212,73 @@ export default function App() {
     }
   };
 
+  // Eliminazione completa del film
   const deleteMovie = async (id, title) => {
-    if (!window.confirm(`Sei sicuro di voler rimuovere "${title}"?`)) return;
+    if (!window.confirm(`Sei sicuro di voler rimuovere completamente "${title}" dal database?`)) return;
     const { error } = await supabase.from('movies').delete().eq('id', id);
     if (error) {
       alert(`Errore eliminazione: ${error.message}`);
     } else {
       setMovies(movies.filter(m => m.id !== id));
+      setDeleteModalMovie(null);
     }
+  };
+
+  // Rimozione selettiva della valutazione
+  const handleRemoveRating = async (target) => {
+    if (!deleteModalMovie) return;
+
+    let updatedGiulio = deleteModalMovie.ratings_giulio;
+    let updatedFranci = deleteModalMovie.ratings_franci;
+
+    if (target === 'giulio') {
+      updatedGiulio = null;
+    } else if (target === 'franci') {
+      updatedFranci = null;
+    } else if (target === 'both') {
+      updatedGiulio = null;
+      updatedFranci = null;
+    }
+
+    const newStatus = (updatedGiulio && updatedFranci) ? 'watched' : 'pending_evaluation';
+
+    const payload = {
+      ratings_giulio: updatedGiulio,
+      ratings_franci: updatedFranci,
+      status: newStatus
+    };
+
+    const { data, error } = await supabase
+      .from('movies')
+      .update(payload)
+      .eq('id', deleteModalMovie.id)
+      .select();
+
+    if (!error && data) {
+      setMovies(prev => prev.map(m => m.id === deleteModalMovie.id ? data[0] : m));
+      const movieTitle = deleteModalMovie.title;
+      setDeleteModalMovie(null);
+
+      if (target === 'giulio') {
+        alert(`Valutazione di Giulio per "${movieTitle}" eliminata. Il film è ora in attesa di voto per Giulio.`);
+      } else if (target === 'franci') {
+        alert(`Valutazione di Franci per "${movieTitle}" eliminata. Il film è ora in attesa di voto per Franci.`);
+      } else {
+        alert(`Entrambe le valutazioni per "${movieTitle}" sono state eliminate.`);
+      }
+    } else {
+      alert(`Errore durante l'aggiornamento: ${error?.message || ''}`);
+    }
+  };
+
+  // Estrazione Casuale Film da "Da Vedere"
+  const pickRandomWatchlistMovie = () => {
+    if (watchlistMovies.length === 0) {
+      alert('Nessun film presente nella lista Da Vedere!');
+      return;
+    }
+    const randomIndex = Math.floor(Math.random() * watchlistMovies.length);
+    setRandomModalMovie(watchlistMovies[randomIndex]);
   };
 
   const handleSaveEvaluation = async () => {
@@ -290,8 +353,7 @@ export default function App() {
   const watchlistMovies = movies.filter(m => m.status === 'watchlist');
 
   const evaluableMoviesForActiveVoter = movies.filter(m => {
-    if (m.status === 'watched') return false;
-    if (m.status !== 'pending_evaluation' && m.status !== 'watchlist') return false;
+    if (m.status !== 'pending_evaluation') return false;
     if (activeVoter === 'giulio') return !m.ratings_giulio;
     if (activeVoter === 'franci') return !m.ratings_franci;
     return true;
@@ -308,7 +370,7 @@ export default function App() {
   return (
     <div style={styles.container}>
       
-      {/* HEADER BANNER SOLO IMMAGINE */}
+      {/* HEADER BANNER CON SFUMATURA CONTINUA */}
       <header style={styles.header}>
         <div style={styles.bannerWrapper}>
           <img
@@ -316,13 +378,12 @@ export default function App() {
             alt="Franci e Giulio Movie Club"
             style={styles.bannerImage}
             onError={(e) => {
-              // Se l'immagine non è ancora caricata nella cartella public, non mostra un box rotto
               e.target.style.display = 'none';
             }}
           />
         </div>
 
-        {/* BARRA DI NAVIGAZIONE MOBILE-FRIENDLY */}
+        {/* BARRA DI NAVIGAZIONE CON 4 PULSANTI IDENTICI */}
         <nav style={styles.nav}>
           <button
             style={activeTab === 'club' ? styles.activeTab : styles.tab}
@@ -442,8 +503,8 @@ export default function App() {
                         </div>
                       )}
 
-                      <button style={styles.btnDanger} onClick={() => deleteMovie(movie.id, movie.title)}>
-                        🗑️ Rimuovi
+                      <button style={styles.btnDanger} onClick={() => setDeleteModalMovie(movie)}>
+                        🗑️ Elimina Valutazione
                       </button>
                     </div>
                   </div>
@@ -452,6 +513,57 @@ export default function App() {
             </div>
           )}
         </section>
+      )}
+
+      {/* POP-UP MODALE ELIMINAZIONE VALUTAZIONE */}
+      {deleteModalMovie && (
+        <div style={styles.modalOverlay} onClick={() => setDeleteModalMovie(null)}>
+          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <h3 style={styles.modalTitle}>🗑️ Elimina Valutazione</h3>
+            <p style={styles.modalSubtitle}>
+              Seleziona quale valutazione desideri eliminare per "<strong>{deleteModalMovie.title}</strong>":
+            </p>
+
+            <div style={styles.modalActionsContainer}>
+              <button
+                style={styles.modalBtnGiulio}
+                onClick={() => handleRemoveRating('giulio')}
+              >
+                👨 Solo la valutazione di Giulio
+              </button>
+
+              <button
+                style={styles.modalBtnFranci}
+                onClick={() => handleRemoveRating('franci')}
+              >
+                👩 Solo la valutazione di Franci
+              </button>
+
+              <button
+                style={styles.modalBtnBoth}
+                onClick={() => handleRemoveRating('both')}
+              >
+                💥 Entrambe le valutazioni
+              </button>
+
+              <hr style={{ borderColor: '#332124', margin: '8px 0', width: '100%' }} />
+
+              <button
+                style={styles.modalBtnDeleteFull}
+                onClick={() => deleteMovie(deleteModalMovie.id, deleteModalMovie.title)}
+              >
+                🗑️ Elimina completamente il film
+              </button>
+
+              <button
+                style={styles.modalBtnCancel}
+                onClick={() => setDeleteModalMovie(null)}
+              >
+                Annulla
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* 2. PAGINA: DA VEDERE */}
@@ -481,7 +593,74 @@ export default function App() {
               ))}
             </div>
           )}
+
+          {/* PULSANTE CIRCOLARE FLUTTUANTE (FAB) IN BASSO A DESTRA */}
+          {watchlistMovies.length > 0 && (
+            <button
+              style={styles.fabBtn}
+              onClick={pickRandomWatchlistMovie}
+              title="Scegli un film a caso da vedere!"
+            >
+              🎲
+            </button>
+          )}
         </section>
+      )}
+
+      {/* POP-UP MODALE ESTRAZIONE CASUALE FILM */}
+      {randomModalMovie && (
+        <div style={styles.modalOverlay} onClick={() => setRandomModalMovie(null)}>
+          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <h3 style={styles.modalTitle}>🎲 Cosa guardiamo stasera?</h3>
+            <p style={styles.modalSubtitle}>Il destino ha scelto questo film per voi:</p>
+
+            <div style={styles.randomMovieBox}>
+              <img
+                src={randomModalMovie.poster_path || 'https://via.placeholder.com/100x150?text=No+Poster'}
+                alt={randomModalMovie.title}
+                style={styles.randomMoviePoster}
+              />
+              <div>
+                <h4 style={{ margin: '0 0 4px 0', color: '#e2c9a1', fontSize: '16px' }}>
+                  {randomModalMovie.title}
+                </h4>
+                <p style={{ margin: '0 0 8px 0', color: '#a69d8d', fontSize: '12px' }}>
+                  Anno: {randomModalMovie.release_year}
+                </p>
+                <p style={{ margin: 0, fontSize: '12px', color: '#ccc', lineHeight: '1.3' }}>
+                  {randomModalMovie.overview ? `${randomModalMovie.overview.substring(0, 110)}...` : 'Nessuna trama disponibile.'}
+                </p>
+              </div>
+            </div>
+
+            <div style={styles.modalActionsContainer}>
+              <button
+                style={styles.modalBtnPrimary}
+                onClick={async () => {
+                  const m = randomModalMovie;
+                  setRandomModalMovie(null);
+                  await markAsSeenPending(m);
+                }}
+              >
+                👁️ Segna come Visto e Valuta
+              </button>
+
+              <button
+                style={styles.modalBtnSecondary}
+                onClick={pickRandomWatchlistMovie}
+              >
+                🎲 Riestrai un altro film
+              </button>
+
+              <button
+                style={styles.modalBtnCancel}
+                onClick={() => setRandomModalMovie(null)}
+              >
+                Annulla
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* 3. PAGINA: VALUTA */}
@@ -641,20 +820,74 @@ export default function App() {
 }
 
 // ==========================================
-// STILI MOBILE-FIRST E CINEMATOGRAFICI
+// STILI SFUMATI E RIGOROSAMENTE UNIFORMI
 // ==========================================
 const styles = {
-  container: { fontFamily: 'system-ui, -apple-system, sans-serif', backgroundColor: '#0e0d10', color: '#f4efe6', minHeight: '100vh', padding: '12px' },
-  header: { display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px' },
-  bannerWrapper: { width: '100%', maxWidth: '950px', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 6px 20px rgba(0,0,0,0.8)', marginBottom: '16px', border: '1px solid #2d181c', backgroundColor: '#181419' },
-  bannerImage: { width: '100%', height: 'auto', display: 'block' },
+  // Sfondo scuro omogeneo che si fonde con l'immagine dell'header
+  container: { fontFamily: 'system-ui, -apple-system, sans-serif', backgroundColor: '#0a080b', color: '#f4efe6', minHeight: '100vh', padding: '12px' },
+  header: { display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20px' },
   
-  // NAVBAR MOBILE FRIENDLY
-  nav: { display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', backgroundColor: '#181419', padding: '8px', borderRadius: '10px', border: '1px solid #332124', width: '100%', maxWidth: '950px', boxSizing: 'border-box' },
-  tab: { backgroundColor: '#251e24', color: '#e2c9a1', border: '1px solid #3d2b30', padding: '10px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', minHeight: '42px' },
-  activeTab: { backgroundColor: '#a81c24', color: '#ffffff', border: '1px solid #e2c9a1', padding: '10px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold', boxShadow: '0 0 12px rgba(168, 28, 36, 0.7)', minHeight: '42px' },
+  // Banner integrato senza bordi né blocchi rigidi
+  bannerWrapper: { width: '100%', maxWidth: '950px', overflow: 'hidden', marginBottom: '12px', backgroundColor: '#0a080b' },
+  bannerImage: { 
+    width: '100%', 
+    height: 'auto', 
+    display: 'block',
+    // Sfumatura del bordo inferiore verso lo sfondo del sito
+    WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 82%, rgba(0,0,0,0) 100%)',
+    maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 82%, rgba(0,0,0,0) 100%)'
+  },
   
-  section: { maxWidth: '1000px', margin: '0 auto', width: '100%', boxSizing: 'border-box' },
+  // NAV BAR CON 4 PULSANTI DI PARI DIMENSIONE (GRIGLIA 2x2 SIMMETRICA SU MOBILE)
+  nav: { 
+    display: 'grid', 
+    gridTemplateColumns: 'repeat(2, 1fr)', 
+    gap: '8px', 
+    backgroundColor: '#151116', 
+    padding: '8px', 
+    borderRadius: '12px', 
+    border: '1px solid #281e23', 
+    width: '100%', 
+    maxWidth: '950px', 
+    boxSizing: 'border-box' 
+  },
+  tab: { 
+    backgroundColor: '#221920', 
+    color: '#e2c9a1', 
+    border: '1px solid #38282e', 
+    padding: '12px 6px', 
+    borderRadius: '8px', 
+    cursor: 'pointer', 
+    fontSize: '12px', 
+    fontWeight: '600', 
+    minHeight: '44px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: 'center',
+    width: '100%',
+    boxSizing: 'border-box'
+  },
+  activeTab: { 
+    backgroundColor: '#a81c24', 
+    color: '#ffffff', 
+    border: '1px solid #e2c9a1', 
+    padding: '12px 6px', 
+    borderRadius: '8px', 
+    cursor: 'pointer', 
+    fontSize: '12px', 
+    fontWeight: 'bold', 
+    boxShadow: '0 0 12px rgba(168, 28, 36, 0.7)', 
+    minHeight: '44px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: 'center',
+    width: '100%',
+    boxSizing: 'border-box'
+  },
+  
+  section: { maxWidth: '1000px', margin: '0 auto', width: '100%', boxSizing: 'border-box', position: 'relative' },
   sectionHeaderFlex: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '28px', borderBottom: '1px solid #2d181c', paddingBottom: '12px' },
   sectionTitle: { fontSize: '22px', margin: 0, color: '#e2c9a1', borderLeft: '4px solid #a81c24', paddingLeft: '10px' },
   sectionTitleSpaced: { fontSize: '22px', margin: '0 0 32px 0', color: '#e2c9a1', borderLeft: '4px solid #a81c24', paddingLeft: '10px' },
@@ -668,7 +901,6 @@ const styles = {
   searchInput: { flex: '1 1 200px', padding: '12px', borderRadius: '8px', border: '1px solid #332124', backgroundColor: '#181419', color: '#fff', fontSize: '16px', minHeight: '44px' },
   genreSelect: { flex: '0 0 140px', padding: '12px', borderRadius: '8px', border: '1px solid #332124', backgroundColor: '#181419', color: '#fff', fontSize: '16px', minHeight: '44px' },
   
-  // GRIGLIA ADATTIVA PER SMARTPHONE (2 PER RIGA)
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '14px' },
   card: { position: 'relative', backgroundColor: '#181419', borderRadius: '10px', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 4px 14px rgba(0,0,0,0.5)', border: '1px solid #2d1a1e' },
   rankBadge: { position: 'absolute', top: '8px', left: '8px', backgroundColor: '#a81c24', color: '#fff', fontWeight: 'bold', padding: '3px 8px', borderRadius: '14px', fontSize: '11px', border: '1px solid #e2c9a1', zIndex: 2 },
@@ -708,5 +940,24 @@ const styles = {
   previewBox: { display: 'flex', gap: '12px', backgroundColor: '#221a20', padding: '10px', borderRadius: '8px', marginBottom: '14px', border: '1px solid #382429' },
   previewPoster: { width: '55px', height: '82px', objectFit: 'cover', borderRadius: '4px' },
   loadingText: { textAlign: 'center', color: '#a69d8d', margin: '40px 0' },
-  emptyText: { color: '#a69d8d', fontStyle: 'italic' }
+  emptyText: { color: '#a69d8d', fontStyle: 'italic' },
+
+  // STILI POP-UP MODALI
+  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' },
+  modalContent: { backgroundColor: '#181419', border: '1px solid #e2c9a1', borderRadius: '14px', padding: '20px', maxWidth: '380px', width: '100%', boxShadow: '0 10px 30px rgba(0,0,0,0.8)', display: 'flex', flexDirection: 'column', gap: '10px' },
+  modalTitle: { margin: 0, fontSize: '18px', color: '#e2c9a1' },
+  modalSubtitle: { fontSize: '13px', color: '#ccc', margin: '0 0 10px 0', lineHeight: '1.4' },
+  modalActionsContainer: { display: 'flex', flexDirection: 'column', gap: '8px' },
+  modalBtnGiulio: { backgroundColor: '#1565c0', color: '#fff', border: '1px solid #64b5f6', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', textAlign: 'left' },
+  modalBtnFranci: { backgroundColor: '#ad1457', color: '#fff', border: '1px solid #f48fb1', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', textAlign: 'left' },
+  modalBtnBoth: { backgroundColor: '#a81c24', color: '#fff', border: '1px solid #e2c9a1', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', textAlign: 'left' },
+  modalBtnDeleteFull: { backgroundColor: '#2d1416', color: '#ff6b6b', border: '1px solid #541d22', padding: '10px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', textAlign: 'center' },
+  modalBtnCancel: { backgroundColor: '#251e24', color: '#aaa', border: '1px solid #3d2b30', padding: '10px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', textAlign: 'center', marginTop: '4px' },
+  
+  // STILI ESTRAZIONE CASUALE
+  fabBtn: { position: 'fixed', bottom: '24px', right: '20px', width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#a81c24', color: '#fff', border: '2px solid #e2c9a1', boxShadow: '0 6px 20px rgba(0,0,0,0.7), 0 0 15px rgba(168, 28, 36, 0.7)', fontSize: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 99 },
+  randomMovieBox: { display: 'flex', gap: '12px', backgroundColor: '#221a20', padding: '12px', borderRadius: '10px', border: '1px solid #382429', marginBottom: '8px' },
+  randomMoviePoster: { width: '70px', height: '105px', objectFit: 'cover', borderRadius: '6px' },
+  modalBtnPrimary: { backgroundColor: '#a81c24', color: '#fff', border: '1px solid #e2c9a1', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', textAlign: 'center' },
+  modalBtnSecondary: { backgroundColor: '#2b2126', color: '#e2c9a1', border: '1px solid #4a2d33', padding: '10px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '13px', textAlign: 'center' }
 };
