@@ -23,16 +23,16 @@ const GENRES = [
   { id: 16, name: 'Animazione' }
 ];
 
-// Categorie di valutazione
+// Categorie di valutazione (Mantenute le emoji solo per "bone/boni" e "horny meter")
 const RATING_CATEGORIES = [
-  { key: 'overall', label: 'Overall', icon: '⭐' },
-  { key: 'plot_uniqueness', label: 'Unicità della trama', icon: '🌀' },
-  { key: 'fun', label: 'Divertimento', icon: '🎉' },
-  { key: 'cringe', label: 'Cringe', icon: '😬' },
-  { key: 'jumpscares', label: 'Jumpscares', icon: '😱' },
-  { key: 'hotties', label: 'Quanti bone/boni hai visto 😡', icon: '😡' },
-  { key: 'protagonist_envy', label: 'Quanto vorremmo essere al posto del protagonista', icon: '👑' },
-  { key: 'horny_meter', label: 'Quante volte ci fa venire voglia di fare sesso 🥵', icon: '🥵' }
+  { key: 'overall', label: 'Overall', icon: '' },
+  { key: 'plot_uniqueness', label: 'Unicità della trama', icon: '' },
+  { key: 'fun', label: 'Divertimento', icon: '' },
+  { key: 'cringe', label: 'Cringe', icon: '' },
+  { key: 'jumpscares', label: 'Jumpscares', icon: '' },
+  { key: 'hotties', label: 'Quanti bone/boni hai visto 😡', icon: '' },
+  { key: 'protagonist_envy', label: 'Quanto vorremmo essere al posto del protagonista', icon: '' },
+  { key: 'horny_meter', label: 'Quante volte ci fa venire voglia di fare sesso 🥵', icon: '' }
 ];
 
 const DEFAULT_RATINGS = {
@@ -370,7 +370,7 @@ export default function App() {
   return (
     <div style={styles.container}>
       
-      {/* HEADER BANNER CON SFUMATURA CONTINUA */}
+      {/* HEADER BANNER */}
       <header style={styles.header}>
         <div style={styles.bannerWrapper}>
           <img
@@ -383,31 +383,35 @@ export default function App() {
           />
         </div>
 
-        {/* BARRA DI NAVIGAZIONE CON 4 PULSANTI IDENTICI */}
+        {/* BARRA DI NAVIGAZIONE CON LE NUOVE ICONE */}
         <nav style={styles.nav}>
           <button
             style={activeTab === 'club' ? styles.activeTab : styles.tab}
             onClick={() => setActiveTab('club')}
           >
-            🏆 IL CLUB ({clubMovies.length})
+            <img src="/icons/icon-club.png" alt="" style={styles.navIcon} />
+            IL CLUB ({clubMovies.length})
           </button>
           <button
             style={activeTab === 'watchlist' ? styles.activeTab : styles.tab}
             onClick={() => setActiveTab('watchlist')}
           >
-            📌 DA VEDERE ({watchlistMovies.length})
+            <img src="/icons/icon-watchlist.png" alt="" style={styles.navIcon} />
+            DA VEDERE ({watchlistMovies.length})
           </button>
           <button
             style={activeTab === 'evaluate' ? styles.activeTab : styles.tab}
             onClick={() => setActiveTab('evaluate')}
           >
-            ⭐ VALUTA {evaluableMoviesForActiveVoter.length > 0 && `(${evaluableMoviesForActiveVoter.length})`}
+            <img src="/icons/icon-evaluate.png" alt="" style={styles.navIcon} />
+            VALUTA {evaluableMoviesForActiveVoter.length > 0 && `(${evaluableMoviesForActiveVoter.length})`}
           </button>
           <button
             style={activeTab === 'library' ? styles.activeTab : styles.tab}
             onClick={() => setActiveTab('library')}
           >
-            📚 LIBRERIA
+            <img src="/icons/icon-library.png" alt="" style={styles.navIcon} />
+            LIBRERIA
           </button>
         </nav>
       </header>
@@ -416,7 +420,7 @@ export default function App() {
       {activeTab === 'club' && (
         <section style={styles.section}>
           <div style={styles.sectionHeaderFlex}>
-            <h2 style={styles.sectionTitle}>🏆 Classifica "Il Club"</h2>
+            <h2 style={styles.sectionTitle}>Classifica "Il Club"</h2>
             
             {clubMovies.length > 0 && (
               <div style={styles.sortContainer}>
@@ -426,12 +430,12 @@ export default function App() {
                   onChange={(e) => setSortBy(e.target.value)}
                   style={styles.sortSelect}
                 >
-                  <option value="overall">⭐ Media Overall</option>
-                  <option value="overall_giulio">👨 Overall Giulio</option>
-                  <option value="overall_franci">👩 Overall Franci</option>
+                  <option value="overall">Media Overall</option>
+                  <option value="overall_giulio">Overall Giulio</option>
+                  <option value="overall_franci">Overall Franci</option>
                   {RATING_CATEGORIES.filter(c => c.key !== 'overall').map(cat => (
                     <option key={cat.key} value={cat.key}>
-                      {cat.icon} {cat.label}
+                      {cat.icon ? `${cat.icon} ` : ''}{cat.label}
                     </option>
                   ))}
                 </select>
@@ -464,20 +468,20 @@ export default function App() {
                       <h3 style={styles.movieTitle}>{movie.title}</h3>
                       <p style={styles.movieYear}>{movie.release_year}</p>
 
-                      <div style={styles.badgeRating}>⭐ Media Overall: {overallAvg} / 10</div>
+                      <div style={styles.badgeRating}>Media Overall: {overallAvg} / 10</div>
 
                       {sortBy !== 'overall' && selectedCatObj && (
                         <div style={styles.sortedCategoryBadge}>
-                          {selectedCatObj.icon} {selectedCatObj.label}: <strong>{currentSortedScore} / 10</strong>
+                          {selectedCatObj.icon ? `${selectedCatObj.icon} ` : ''}{selectedCatObj.label}: <strong>{currentSortedScore} / 10</strong>
                         </div>
                       )}
 
                       <div style={styles.voterBox}>
                         <p style={{ margin: '2px 0', fontWeight: 'bold', color: '#64b5f6' }}>
-                          👨 Giulio Overall: {movie.ratings_giulio?.overall || '-'}
+                          Giulio Overall: {movie.ratings_giulio?.overall || '-'}
                         </p>
                         <p style={{ margin: '2px 0', fontWeight: 'bold', color: '#f48fb1' }}>
-                          👩 Franci Overall: {movie.ratings_franci?.overall || '-'}
+                          Franci Overall: {movie.ratings_franci?.overall || '-'}
                         </p>
                       </div>
 
@@ -494,9 +498,11 @@ export default function App() {
                         <div style={styles.expandedCategoryBox}>
                           {RATING_CATEGORIES.map(cat => (
                             <div key={cat.key} style={styles.expandedCategoryRow}>
-                              <span style={{ fontSize: '11px' }}>{cat.icon} {cat.label}:</span>
+                              <span style={{ fontSize: '11px' }}>
+                                {cat.icon ? `${cat.icon} ` : ''}{cat.label}:
+                              </span>
                               <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#e2c9a1' }}>
-                                👨 {movie.ratings_giulio?.[cat.key] ?? '-'} | 👩 {movie.ratings_franci?.[cat.key] ?? '-'}
+                                Giulio: {movie.ratings_giulio?.[cat.key] ?? '-'} | Franci: {movie.ratings_franci?.[cat.key] ?? '-'}
                               </span>
                             </div>
                           ))}
@@ -529,14 +535,14 @@ export default function App() {
                 style={styles.modalBtnGiulio}
                 onClick={() => handleRemoveRating('giulio')}
               >
-                👨 Solo la valutazione di Giulio
+                Solo la valutazione di Giulio
               </button>
 
               <button
                 style={styles.modalBtnFranci}
                 onClick={() => handleRemoveRating('franci')}
               >
-                👩 Solo la valutazione di Franci
+                Solo la valutazione di Franci
               </button>
 
               <button
@@ -569,7 +575,7 @@ export default function App() {
       {/* 2. PAGINA: DA VEDERE */}
       {activeTab === 'watchlist' && (
         <section style={styles.section}>
-          <h2 style={styles.sectionTitleSpaced}>📌 Film da vedere insieme</h2>
+          <h2 style={styles.sectionTitleSpaced}>Film da vedere insieme</h2>
           {watchlistMovies.length === 0 ? (
             <p style={styles.emptyText}>Nessun film in lista. Aggiungine qualcuno dalla Libreria!</p>
           ) : (
@@ -666,7 +672,7 @@ export default function App() {
       {/* 3. PAGINA: VALUTA */}
       {activeTab === 'evaluate' && (
         <section style={styles.section}>
-          <h2 style={styles.sectionTitleSpaced}>⭐ Inserisci Valutazione</h2>
+          <h2 style={styles.sectionTitleSpaced}>Inserisci Valutazione</h2>
           <div style={styles.formContainer}>
             
             <label style={styles.label}>Chi sta votando adesso?</label>
@@ -676,14 +682,14 @@ export default function App() {
                 style={activeVoter === 'giulio' ? styles.voterButtonActiveGiulio : styles.voterButton}
                 onClick={() => { setActiveVoter('giulio'); setSelectedMovieToEvaluate(''); }}
               >
-                👨 Giulio
+                Giulio
               </button>
               <button
                 type="button"
                 style={activeVoter === 'franci' ? styles.voterButtonActiveFranci : styles.voterButton}
                 onClick={() => { setActiveVoter('franci'); setSelectedMovieToEvaluate(''); }}
               >
-                👩 Franci
+                Franci
               </button>
             </div>
 
@@ -729,14 +735,14 @@ export default function App() {
               {RATING_CATEGORIES.map(cat => (
                 <div key={cat.key} style={styles.sliderGroup}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '6px' }}>
-                    <span>{cat.icon} {cat.label}</span>
+                    <span>{cat.icon ? `${cat.icon} ` : ''}{cat.label}</span>
                     <strong style={{ color: '#a81c24', fontSize: '16px' }}>{ratings[cat.key]} / 10</strong>
                   </div>
                   <input
                     type="range"
                     min="1"
                     max="10"
-                    step="0.5"
+                    step="1"
                     value={ratings[cat.key]}
                     onChange={(e) => setRatings({ ...ratings, [cat.key]: parseFloat(e.target.value) })}
                     style={styles.slider}
@@ -820,25 +826,21 @@ export default function App() {
 }
 
 // ==========================================
-// STILI SFUMATI E RIGOROSAMENTE UNIFORMI
+// STILI
 // ==========================================
 const styles = {
-  // Sfondo scuro omogeneo che si fonde con l'immagine dell'header
   container: { fontFamily: 'system-ui, -apple-system, sans-serif', backgroundColor: '#0a080b', color: '#f4efe6', minHeight: '100vh', padding: '12px' },
   header: { display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20px' },
   
-  // Banner integrato senza bordi né blocchi rigidi
   bannerWrapper: { width: '100%', maxWidth: '950px', overflow: 'hidden', marginBottom: '12px', backgroundColor: '#0a080b' },
   bannerImage: { 
     width: '100%', 
     height: 'auto', 
     display: 'block',
-    // Sfumatura del bordo inferiore verso lo sfondo del sito
     WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 82%, rgba(0,0,0,0) 100%)',
     maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 82%, rgba(0,0,0,0) 100%)'
   },
   
-  // NAV BAR CON 4 PULSANTI DI PARI DIMENSIONE (GRIGLIA 2x2 SIMMETRICA SU MOBILE)
   nav: { 
     display: 'grid', 
     gridTemplateColumns: 'repeat(2, 1fr)', 
@@ -866,7 +868,8 @@ const styles = {
     justifyContent: 'center',
     textAlign: 'center',
     width: '100%',
-    boxSizing: 'border-box'
+    boxSizing: 'border-box',
+    gap: '6px'
   },
   activeTab: { 
     backgroundColor: '#a81c24', 
@@ -884,7 +887,13 @@ const styles = {
     justifyContent: 'center',
     textAlign: 'center',
     width: '100%',
-    boxSizing: 'border-box'
+    boxSizing: 'border-box',
+    gap: '6px'
+  },
+  navIcon: {
+    width: '18px',
+    height: '18px',
+    objectFit: 'contain'
   },
   
   section: { maxWidth: '1000px', margin: '0 auto', width: '100%', boxSizing: 'border-box', position: 'relative' },
